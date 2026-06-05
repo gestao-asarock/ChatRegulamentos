@@ -1,0 +1,12 @@
+# Secrets
+.env
+.streamlit/secrets.toml
+
+# Artefatos gerados pela pipeline (regeneráveis)
+regulamentos/
+regulamentos_md/
+
+# Python
+venv
+__pycache__/
+*.pyc
