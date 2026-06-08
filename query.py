@@ -1,4 +1,6 @@
+import json
 import os
+from pathlib import Path
 from google import genai
 from google.genai import types
 from supabase import create_client
@@ -13,7 +15,7 @@ EMBEDDING_MODEL = "gemini-embedding-001"
 GENERATION_MODEL = "gemini-2.5-flash"
 
 SIMILARITY_THRESHOLD = 0.72   # mínimo de similaridade para incluir um chunk
-MAX_CHUNKS = 37                # máximo de chunks acima do threshold
+MAX_CHUNKS = 50                # máximo de chunks acima do threshold
 FALLBACK_COUNT = 5             # chunks retornados se nenhum passa o threshold
 DEBUG = False                  # True = mostra scores e contagem de chunks
 
@@ -74,13 +76,14 @@ def inspect_similarity(supabase, embedding: list[float]) -> None:
     print()
 
 
-def build_prompt(question: str, chunks: list[dict]) -> str:
+def build_prompt(question: str, chunks: list[dict], names: dict[str, str] | None = None) -> str:
     context_blocks = []
     for i, chunk in enumerate(chunks, 1):
         fundo = chunk.get("fundo", "N/A")
         secao = chunk.get("secao", "N/A")
         texto = chunk.get("texto", "")
-        context_blocks.append(f"[{i}] Fundo: {fundo} | Seção: {secao}\n{texto}")
+        label = fundo_label(fundo, names) if names else fundo
+        context_blocks.append(f"[{i}] Fundo: {label} | Seção: {secao}\n{texto}")
 
     context = "\n\n".join(context_blocks)
 
@@ -88,6 +91,7 @@ def build_prompt(question: str, chunks: list[dict]) -> str:
 Responda à pergunta abaixo com base EXCLUSIVAMENTE nas passagens de regulamento fornecidas.
 Se a informação não estiver disponível no contexto, diga explicitamente que não encontrou essa informação nos regulamentos consultados.
 Não invente informações nem use conhecimento externo.
+Ao citar fontes, use sempre o nome do fundo (campo "Fundo:" de cada passagem), nunca os índices numéricos como [1], [2], etc.
 
 --- CONTEXTO ---
 {context}
@@ -98,7 +102,7 @@ Pergunta: {question}
 Resposta:"""
 
 
-def format_sources(chunks: list[dict]) -> str:
+def format_sources(chunks: list[dict], names: dict[str, str] | None = None) -> str:
     seen = set()
     lines = []
     for chunk in chunks:
@@ -108,9 +112,116 @@ def format_sources(chunks: list[dict]) -> str:
         key = (fundo, secao)
         if key not in seen:
             seen.add(key)
+            label = fundo_label(fundo, names) if names else fundo
             suffix = f"  [sim={sim:.4f}]" if DEBUG else ""
-            lines.append(f"  • {fundo} — {secao}{suffix}")
+            lines.append(f"  • {label} — {secao}{suffix}")
     return "\n".join(lines)
+
+
+_FUNDOS_JSON = Path(__file__).parent / "fundos.json"
+
+def load_fundo_names(field: str = "mnemonico") -> dict[str, str]:
+    """Retorna mapeamento CNPJ → campo solicitado ('mnemonico' ou 'nome').
+    Suporta formato legado {"cnpj": "string"} e novo {"cnpj": {"nome": ..., "mnemonico": ...}}.
+    """
+    try:
+        data = json.loads(_FUNDOS_JSON.read_text(encoding="utf-8"))
+        result = {}
+        for cnpj, val in data.items():
+            if isinstance(val, dict):
+                result[cnpj] = val.get(field) or val.get("nome") or cnpj
+            else:
+                result[cnpj] = val or cnpj
+        return result
+    except FileNotFoundError:
+        return {}
+
+def fundo_label(fundo: str, names: dict[str, str]) -> str:
+    """Converte identificador 'CNPJ_data' para nome legível."""
+    cnpj = fundo.split("_")[0]
+    return names.get(cnpj, fundo)
+
+
+def format_sources_md(chunks: list[dict], names: dict[str, str] | None = None) -> str:
+    """Retorna markdown agrupado por fundo para exibição no Streamlit."""
+    groups: dict[str, list[str]] = {}
+    seen: set[tuple] = set()
+    for chunk in chunks:
+        fundo = chunk.get("fundo", "N/A")
+        secao = chunk.get("secao", "N/A")
+        key = (fundo, secao)
+        if key not in seen:
+            seen.add(key)
+            label = fundo_label(fundo, names) if names else fundo
+            groups.setdefault(label, []).append(secao)
+
+    lines = []
+    for label, secoes in groups.items():
+        lines.append(f"**{label}**")
+        for secao in secoes:
+            clean = secao.replace(":", "").strip()
+            lines.append(f"- *{clean}*")
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+
+def get_all_fundos(supabase) -> list[str]:
+    result = supabase.table("regulamentos_chunks").select("fundo").execute()
+    return sorted({r["fundo"] for r in result.data})
+
+
+def search_chunks_filtered(
+    supabase,
+    embedding: list[float],
+    fundo_filter: list[str] | None = None,
+) -> list[dict]:
+    """Busca com filtro opcional de fundos.
+
+    - fundo_filter=None  → todos os fundos, threshold=SIMILARITY_THRESHOLD
+    - fundo único        → threshold=0.4, fallback=top-N do fundo
+    - múltiplos fundos   → threshold=0.65, garante ≥1 chunk por fundo
+    Fallback para múltiplos/todos: melhor chunk por fundo via match_documents_best_per_fund.
+    """
+    single = fundo_filter is not None and len(fundo_filter) == 1
+    threshold = (
+        0.4 if single
+        else SIMILARITY_THRESHOLD if fundo_filter is None
+        else 0.65
+    )
+
+    result = supabase.rpc(
+        "match_documents_filtered",
+        {
+            "query_embedding": embedding,
+            "match_count": MAX_CHUNKS,
+            "similarity_threshold": threshold,
+            "fallback_count": FALLBACK_COUNT,
+            "fundo_filter": fundo_filter,
+        },
+    ).execute()
+    chunks = result.data or []
+
+    # Para múltiplos/todos: garante ≥1 chunk por fundo em qualquer caso
+    if not single:
+        if chunks and chunks[0].get("is_fallback"):
+            # Nenhum chunk passou o threshold — substitui pelo melhor por fundo
+            result = supabase.rpc(
+                "match_documents_best_per_fund",
+                {"query_embedding": embedding, "fundo_filter": fundo_filter},
+            ).execute()
+            chunks = result.data or []
+        else:
+            # Threshold retornou parcialmente — suplementa fundos ausentes
+            represented = {c["fundo"] for c in chunks}
+            supplement = supabase.rpc(
+                "match_documents_best_per_fund",
+                {"query_embedding": embedding, "fundo_filter": fundo_filter},
+            ).execute()
+            for c in supplement.data or []:
+                if c["fundo"] not in represented:
+                    chunks.append(c)
+
+    return chunks
 
 
 def main():
