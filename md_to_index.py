@@ -18,6 +18,7 @@ EMBEDDING_MODEL = "gemini-embedding-001"
 _api_keys = [k for k in [
     os.environ.get("GEMINI_API_KEY"),
     os.environ.get("GEMINI_API_KEY2"),
+    os.environ.get("GEMINI_API_KEY3"),
 ] if k]
 _key_index = 0
 _clients   = [genai.Client(api_key=k) for k in _api_keys]

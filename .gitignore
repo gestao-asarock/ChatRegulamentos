@@ -5,6 +5,7 @@
 # Artefatos gerados pela pipeline (regeneráveis)
 regulamentos/
 regulamentos_md/
+controle.json
 
 # Python
 venv
