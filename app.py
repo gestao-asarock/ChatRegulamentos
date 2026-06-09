@@ -123,9 +123,9 @@ details summary {
 st.markdown("""
 <div style="border-bottom: 3px solid #F26522; padding-bottom: 14px; margin-bottom: 4px;">
     <span style="color:#F26522; font-size:1.1em; font-weight:700; letter-spacing:1px;">ASAROCK</span>
-    <h2 style="margin: 2px 0 0 0; color:#2D2D2D; font-weight:700; font-size:1.6em;">
+    <p style="margin: 2px 0 0 0; color:#2D2D2D; font-weight:700; font-size:1.6em; line-height:1.2;">
         Consulta de Regulamentos
-    </h2>
+    </p>
     <p style="margin:4px 0 0 0; color:#888; font-size:0.9em;">
         Pesquise dúvidas sobre os regulamentos dos fundos de investimento.
     </p>
