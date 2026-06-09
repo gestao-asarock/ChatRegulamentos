@@ -92,6 +92,7 @@ Responda à pergunta abaixo com base EXCLUSIVAMENTE nas passagens de regulamento
 Se a informação não estiver disponível no contexto, diga explicitamente que não encontrou essa informação nos regulamentos consultados.
 Não invente informações nem use conhecimento externo.
 Ao citar fontes, use sempre o nome do fundo (campo "Fundo:" de cada passagem), nunca os índices numéricos como [1], [2], etc.
+Não use backticks nem formatação de código em nenhuma parte da resposta — nem em valores monetários, percentuais ou qualquer outro dado.
 
 --- CONTEXTO ---
 {context}
