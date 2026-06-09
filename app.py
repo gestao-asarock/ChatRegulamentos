@@ -167,6 +167,7 @@ with st.sidebar:
         n = len(fundo_filter)
         st.caption(f"{n} fundo{'s' if n > 1 else ''} selecionado{'s' if n > 1 else ''}")
 
+    st.caption("Versão inicial, caso tenham fundos faltando ou encontre algum bug, por favor avisar.")
     st.divider()
     st.checkbox("Todos os fundos", value=False, key="usar_todos")
     st.caption("⚠️ Use somente se necessário — consulta todos os fundos e pode sobrecarregar o bot.")
