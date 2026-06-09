@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import threading
 import streamlit as st
@@ -222,6 +223,7 @@ if question := st.chat_input("Digite sua pergunta sobre regulamentos..."):
                 prompt = build_prompt(question, chunks, mnemonicos)
                 try:
                     answer = generate_with_rotation(gemini_clients, GENERATION_MODEL, prompt)
+                    answer = re.sub(r'`+([^`\n]+)`+', r'\1', answer)
                 except Exception as e:
                     err = ("O modelo está temporariamente sobrecarregado. Tente novamente em instantes."
                            if ("503" in str(e) or "UNAVAILABLE" in str(e))
