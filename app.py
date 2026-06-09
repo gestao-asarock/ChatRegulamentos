@@ -92,11 +92,45 @@ def generate_with_rotation(clients: list, model: str, prompt: str) -> str:
 
 # ── Layout ────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Regulamentos de Fundos",
+    page_title="Regulamentos | AsaRock",
     page_icon="📋",
     layout="centered",
 )
-st.title("📋 Consulta de Regulamentos de Fundos")
+
+st.markdown("""
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+
+section[data-testid="stSidebar"] {
+    border-right: 3px solid #F26522;
+}
+section[data-testid="stSidebar"] h2 {
+    color: #F26522;
+    font-weight: 700;
+}
+details {
+    border-left: 3px solid #F26522;
+    padding-left: 10px;
+}
+details summary {
+    font-weight: 600;
+    color: #2D2D2D;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div style="border-bottom: 3px solid #F26522; padding-bottom: 14px; margin-bottom: 4px;">
+    <span style="color:#F26522; font-size:1.1em; font-weight:700; letter-spacing:1px;">ASAROCK</span>
+    <h2 style="margin: 2px 0 0 0; color:#2D2D2D; font-weight:700; font-size:1.6em;">
+        Consulta de Regulamentos
+    </h2>
+    <p style="margin:4px 0 0 0; color:#888; font-size:0.9em;">
+        Pesquise dúvidas sobre os regulamentos dos fundos de investimento.
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
 # ── Sidebar — seleção de fundos ───────────────────────────────────────────────
 gemini_clients, supabase_client = get_clients()
@@ -104,11 +138,12 @@ todos_fundos = load_fundos(supabase_client)
 
 with st.sidebar:
     st.header("Filtro de fundos")
-    usar_todos = st.checkbox("Todos os fundos", value=True)
 
     _fmt = lambda f: fundo_label(f, nomes)
+    # Lê o estado do checkbox do render anterior para poder renderizar o multiselect primeiro
+    _usar_todos = st.session_state.get("usar_todos", False)
 
-    if usar_todos:
+    if _usar_todos:
         st.multiselect(
             "Fundos selecionados",
             options=todos_fundos,
@@ -131,6 +166,10 @@ with st.sidebar:
     if fundo_filter is not None:
         n = len(fundo_filter)
         st.caption(f"{n} fundo{'s' if n > 1 else ''} selecionado{'s' if n > 1 else ''}")
+
+    st.divider()
+    st.checkbox("Todos os fundos", value=False, key="usar_todos")
+    st.caption("⚠️ Use somente se necessário — consulta todos os fundos e pode sobrecarregar o bot.")
 
 # ── Estado da sessão ──────────────────────────────────────────────────────────
 if "messages" not in st.session_state:
