@@ -2,12 +2,12 @@ name: Atualização semanal de regulamentos
 
 on:
   schedule:
-    - cron: '0 6 * * 1'  # toda segunda-feira às 06:00 UTC
+    - cron: '0 21 * * 1'  # toda segunda-feira às 18:00 BRT (21:00 UTC)
   workflow_dispatch:       # permite disparo manual pelo GitHub
 
 jobs:
   update-regulamentos:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 60
 
     steps:
