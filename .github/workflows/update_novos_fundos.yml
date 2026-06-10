@@ -19,9 +19,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Filtrar cnpjs.txt para os últimos ${{ inputs.quantidade }} fundos
+        shell: python
         run: |
-          python - <<'EOF'
-          import sys
           n = int("${{ inputs.quantidade }}")
           linhas = [l.strip() for l in open("cnpjs.txt").readlines() if l.strip()]
           ultimos = linhas[-n:]
@@ -29,7 +28,6 @@ jobs:
           print(f"Processando {len(ultimos)} CNPJ(s):")
           for c in ultimos:
               print(f"  {c}")
-          EOF
 
       - name: Instalar dependências do pipeline
         run: python -m pip install -r requirements-pipeline.txt
