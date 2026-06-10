@@ -19,14 +19,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Filtrar cnpjs.txt para os últimos ${{ inputs.quantidade }} fundos
-        shell: pwsh
         run: |
-          $n = [int]"${{ inputs.quantidade }}"
-          $linhas = Get-Content cnpjs.txt | Where-Object { $_.Trim() -ne "" }
-          $ultimos = $linhas | Select-Object -Last $n
-          $ultimos | Set-Content cnpjs.txt -Encoding utf8
-          Write-Host "Processando $($ultimos.Count) CNPJ(s):"
-          $ultimos | ForEach-Object { Write-Host "  $_" }
+          python - <<'EOF'
+          import sys
+          n = int("${{ inputs.quantidade }}")
+          linhas = [l.strip() for l in open("cnpjs.txt").readlines() if l.strip()]
+          ultimos = linhas[-n:]
+          open("cnpjs.txt", "w").write("\n".join(ultimos) + "\n")
+          print(f"Processando {len(ultimos)} CNPJ(s):")
+          for c in ultimos:
+              print(f"  {c}")
+          EOF
 
       - name: Instalar dependências do pipeline
         run: python -m pip install -r requirements-pipeline.txt
