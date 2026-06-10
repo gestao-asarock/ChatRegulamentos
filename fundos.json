@@ -35,5 +35,6 @@
   "54417489000120": { "nome": "SUPER FARMS FIAGRO",                               "mnemonico": "SUPER FARMS" },
   "54796372000103": { "nome": "SOLIS FIP MULTIESTRATÉGIA RI",                     "mnemonico": "SOLIS" },
   "57698725000112": { "nome": "POSITIVO IV FIA RL",                               "mnemonico": "POSITIVO IV (FIA)" },
-  "61708110000105": { "nome": "BCJPAR FIP MULTIESTRATÉGIA",                       "mnemonico": "BCJPAR" }
+  "61708110000105": { "nome": "BCJPAR FIP MULTIESTRATÉGIA",                       "mnemonico": "BCJPAR" },
+  "63803585000106": {"nome": "FEDERAL FIDC",                                      "mnemonico": "FEDERAL FIDC"}
 }

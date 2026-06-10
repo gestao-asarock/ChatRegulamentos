@@ -1,0 +1,48 @@
+name: Indexar últimos N fundos
+
+on:
+  workflow_dispatch:
+    inputs:
+      quantidade:
+        description: 'Quantidade de fundos (últimas linhas de cnpjs.txt) a processar'
+        required: true
+        default: '1'
+        type: number
+
+jobs:
+  update-novos-fundos:
+    runs-on: self-hosted
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Filtrar cnpjs.txt para os últimos ${{ inputs.quantidade }} fundos
+        shell: pwsh
+        run: |
+          $n = [int]"${{ inputs.quantidade }}"
+          $linhas = Get-Content cnpjs.txt | Where-Object { $_.Trim() -ne "" }
+          $ultimos = $linhas | Select-Object -Last $n
+          $ultimos | Set-Content cnpjs.txt -Encoding utf8
+          Write-Host "Processando $($ultimos.Count) CNPJ(s):"
+          $ultimos | ForEach-Object { Write-Host "  $_" }
+
+      - name: Instalar dependências do pipeline
+        run: python -m pip install -r requirements-pipeline.txt
+
+      - name: Baixar PDFs da CVM
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python download_cvm.py
+
+      - name: Converter PDFs para Markdown
+        run: python pdf_to_md.py
+
+      - name: Indexar documentos no Supabase
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY2: ${{ secrets.GEMINI_API_KEY2 }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python md_to_index.py
